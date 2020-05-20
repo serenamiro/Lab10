@@ -1,6 +1,7 @@
 package it.polito.tdp.bar.model;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -18,11 +19,10 @@ public class Simulator {
 	// PARAMETRI DI SIMULAZIONE
 	private int counter;
 	private double tolleranza_sim;
-	private Duration arrivi = Duration.of(10, ChronoUnit.MINUTES);
 	
 	// MODELLO DEL MONDO
-	private final LocalTime apertura = LocalTime.of(10, 00);
-	private final LocalTime chiusura = LocalTime.of(20, 00);
+	private final LocalDateTime apertura = LocalDateTime.of(2020, 05, 20, 10, 00);
+	private final LocalDateTime chiusura = LocalDateTime.of(2020, 05, 20, 22, 00);
 	Map<Integer, Integer> tavoli_disp = new HashMap<Integer, Integer>();
 
 	// VALORI DA CALCOLARE
@@ -45,12 +45,15 @@ public class Simulator {
 	}
 	
 	public void run() {
-		LocalTime oraArrivoGruppo = this.apertura;
+		LocalDateTime oraArrivoGruppo = this.apertura;
 		do{ int num_pers = (int) (Math.random()*10+1);
 			double toll_gruppo = Math.random();
 			Event e = new Event(oraArrivoGruppo, EventType.ARRIVO_GRUPPO_CLIENTI, num_pers, toll_gruppo);
 			this.queue.add(e);
-			oraArrivoGruppo = oraArrivoGruppo.plus(this.arrivi);
+			int random = (int)(Math.random()*10+1);
+			Duration arrivi = Duration.of(random, ChronoUnit.MINUTES);
+			
+			oraArrivoGruppo = oraArrivoGruppo.plus(arrivi);
 			counter++;
 		}while(counter<=2000);
 		
@@ -62,34 +65,37 @@ public class Simulator {
 			}
 		}
 	}
+	
+	private int checkTavolo(Event e) {
+		int assegnato = -1;
+		for(int i = e.getNum_persone(); i<2*e.getNum_persone(); i++) {
+			for (int chiave : this.tavoli_disp.keySet()) {
+				if(chiave == i) {
+					int temp = this.tavoli_disp.get(chiave);
+					if(temp>0) {
+						this.tavoli_disp.put(i, this.tavoli_disp.get(i)-1);
+						assegnato = i;
+						return assegnato;
+					}
+				}
+			}
+		}
+		return assegnato;
+	}
 
 	private void processEvent(Event e) {
 		
 		switch(e.getType()) {
 		case ARRIVO_GRUPPO_CLIENTI:
 			
-			int i;
-			boolean assegnato = false;
-			for(i = e.getNum_persone(); i<2*e.getNum_persone(); i++) {
-				for (int chiave : this.tavoli_disp.keySet()) {
-					if(chiave == i) {
-						int temp = this.tavoli_disp.get(chiave);
-						if(temp>0) {
-							this.tavoli_disp.put(i, this.tavoli_disp.get(i)-1);
-							assegnato = true;
-							break;
-						}
-					}
-				}
-			}
-			
-			if(assegnato == true) {
+			if(checkTavolo(e) != -1) {
 				this.clienti += e.getNum_persone();
 				this.soddisfatti += e.getNum_persone();
 				
-				Duration durata = Duration.of(60, ChronoUnit.MINUTES);
+				int random2 = (int)(Math.random()*61+60);
+				Duration durata = Duration.of(random2, ChronoUnit.MINUTES);
 				
-				Event nuovo = new Event(e.getTime().plus(durata), EventType.TAVOLO_LIBERATO, i, e.getToll_random());
+				Event nuovo = new Event(e.getTime().plus(durata), EventType.TAVOLO_LIBERATO, checkTavolo(e), e.getToll_random());
 				this.queue.add(nuovo);
 				
 			} else if(e.getToll_random()<=this.tolleranza_sim) {
