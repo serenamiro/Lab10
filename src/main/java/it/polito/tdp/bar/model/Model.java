@@ -17,11 +17,15 @@ public class Model {
 		return sim.getClienti();
 	}
 	
-	public int getSoddisfatti() {
-		return sim.getSoddisfatti();
+	public String getSoddisfatti() {
+		double div = (double)sim.getSoddisfatti()/(double)sim.getClienti()*100;
+		String s = div+"%";
+		return s;
 	}
 	
-	public int getInsoddisfatti() {
-		return sim.getInsoddisfatti();
+	public String getInsoddisfatti() {
+		double div = (double)sim.getInsoddisfatti()/(double)sim.getClienti()*100;
+		String s = div+"%";
+		return s;
 	}
 }

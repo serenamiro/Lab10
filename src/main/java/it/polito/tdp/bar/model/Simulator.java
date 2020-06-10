@@ -38,7 +38,7 @@ public class Simulator {
 		tavoli_disp.put(4, 5);
 		
 		this.counter = 1;
-		this.tolleranza_sim = 0.5;
+		this.tolleranza_sim = 0.7;
 		
 		this.clienti = this.insoddisfatti = this.soddisfatti = 0;
 	
