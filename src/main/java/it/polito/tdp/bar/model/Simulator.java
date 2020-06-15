@@ -1,136 +1,145 @@
 package it.polito.tdp.bar.model;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.PriorityQueue;
-import java.util.Random;
 
 import it.polito.tdp.bar.model.Event.EventType;
 
 public class Simulator {
 	
+	// MODELLO DEL MONDO
+	private List<Tavolo> tavoli;
+	
+	// PARAMETRI DI SIMULAZIONE
+	private int NUM_EVENTI = 2000;
+	private int T_MIN_ARRIVO_MAX = 10;
+	private int NUM_PERSONE_MAX = 10; // gruppi max di 10 persone
+	private int DURATA_MIN = 60;
+	private int DURATA_MAX = 120;
+	private double TOLLERANZA_MAX= 0.9;
+	private double OCCUPAZIONE_MIN = 0.5;
+	
+	// VALORI DA CALCOLARE
+	private Statistiche stat;
+	
 	// CODA DEGLI EVENTI
 	private PriorityQueue<Event> queue;
 	
-	// PARAMETRI DI SIMULAZIONE
-	private int counter;
-	private double tolleranza_sim;
 	
-	// MODELLO DEL MONDO
-	private final LocalDateTime apertura = LocalDateTime.of(2020, 05, 20, 10, 00);
-	private final LocalDateTime chiusura = LocalDateTime.of(2020, 05, 20, 22, 00);
-	Map<Integer, Integer> tavoli_disp = new HashMap<Integer, Integer>();
+	private void caricaTavoli() {
+		this.tavoli = new ArrayList<>();
+		
+		aggiungiTavolo(2, 10);
+		aggiungiTavolo(4, 8);
+		aggiungiTavolo(4, 6);
+		aggiungiTavolo(5, 4);
+		
+		// ordinare l'ArrayList in modo da poter "ciclare" sui tavoli per trovare il più piccolo tavolo disponibile
+		Collections.sort(this.tavoli, new Comparator<Tavolo>() {
+			@Override
+			public int compare(Tavolo o1, Tavolo o2) {
+				return o1.getnPosti()-o2.getnPosti();
+			}
+		});
+	}
+	
 
-	// VALORI DA CALCOLARE
-	private int clienti;
-	private int soddisfatti;
-	private int insoddisfatti;
+	private void aggiungiTavolo(int num, int nPosti) {
+		for(int i = 0; i<num; i++) {
+			Tavolo t = new Tavolo(nPosti, false);
+			this.tavoli.add(t);
+		}
+	}
+	
+	
+	private void caricaEventi() {
+		Duration arrivo = Duration.ofMinutes(0); // non ci sono indicazioni di tempo, per cui partiamo al tempo 0
+		
+		for(int i = 0; i<this.NUM_EVENTI; i++) {
+			// num persone = valore casuale tra 1 e 10
+			int numPersone = (int)(Math.random()*this.NUM_PERSONE_MAX + 1); 
+			
+			// valore casuale tra 60 e 120 minuti
+			Duration durata = Duration.ofMinutes(this.DURATA_MIN + (int)(Math.random()*(this.DURATA_MAX-this.DURATA_MIN)));
+			
+			// tolleranza = float tra 0.0 e 0.9
+			double tolleranza = Math.random()*this.TOLLERANZA_MAX;
+			
+			// ATTENZIONE: il tavolo non viene assegnato in questo momento
+			Event e = new Event(arrivo, EventType.ARRIVO_GRUPPO_CLIENTI, numPersone, durata, tolleranza, null);
+			this.queue.add(e);
+			
+			// i gruppi arrivano al massimo ogni 10 minuti
+			arrivo = arrivo.plusMinutes(1 + (int)(Math.random()*this.T_MIN_ARRIVO_MAX));
+		}
+	}
+	
+	
 	
 	public void init() {
+		caricaTavoli();
 		this.queue = new PriorityQueue<Event>();
-		tavoli_disp.put(10, 2);
-		tavoli_disp.put(8, 4);
-		tavoli_disp.put(6, 4);
-		tavoli_disp.put(4, 5);
-		
-		this.counter = 1;
-		this.tolleranza_sim = 0.7;
-		
-		this.clienti = this.insoddisfatti = this.soddisfatti = 0;
-	
+		caricaEventi();
+		this.stat = new Statistiche();
 	}
 	
-	public void run() {
-		LocalDateTime oraArrivoGruppo = this.apertura;
-		do{ int num_pers = (int) (Math.random()*10+1);
-			double toll_gruppo = Math.random();
-			Event e = new Event(oraArrivoGruppo, EventType.ARRIVO_GRUPPO_CLIENTI, num_pers, toll_gruppo);
-			this.queue.add(e);
-			int random = (int)(Math.random()*10+1);
-			Duration arrivi = Duration.of(random, ChronoUnit.MINUTES);
-			
-			oraArrivoGruppo = oraArrivoGruppo.plus(arrivi);
-			counter++;
-		}while(counter<=2000);
-		
+	public void run() {		
 		while(!this.queue.isEmpty()) {
 			Event e = this.queue.poll();
-			if(e.getTime().isBefore(this.chiusura)) {
-				System.out.println(e);
-				processEvent(e);
-			}
+			System.out.println(e);
+			processEvent(e);
 		}
 	}
 	
-	private int checkTavolo(Event e) {
-		int assegnato = -1;
-		for(int i = e.getNum_persone(); i<2*e.getNum_persone(); i++) {
-			for (int chiave : this.tavoli_disp.keySet()) {
-				if(chiave == i) {
-					int temp = this.tavoli_disp.get(chiave);
-					if(temp>0) {
-						this.tavoli_disp.put(i, this.tavoli_disp.get(i)-1);
-						assegnato = i;
-						return assegnato;
-					}
-				}
-			}
-		}
-		return assegnato;
-	}
-
+	
 	private void processEvent(Event e) {
 		
 		switch(e.getType()) {
 		case ARRIVO_GRUPPO_CLIENTI:
 			
-			if(checkTavolo(e) != -1) {
-				this.clienti += e.getNum_persone();
-				this.soddisfatti += e.getNum_persone();
-				
-				int random2 = (int)(Math.random()*61+60);
-				Duration durata = Duration.of(random2, ChronoUnit.MINUTES);
-				
-				Event nuovo = new Event(e.getTime().plus(durata), EventType.TAVOLO_LIBERATO, checkTavolo(e), e.getToll_random());
-				this.queue.add(nuovo);
-				
-			} else if(e.getToll_random()<=this.tolleranza_sim) {
-				// si siedono al bancone
-				this.clienti += e.getNum_persone();
-				this.soddisfatti += e.getNum_persone();
-				
+			stat.addNumClientiTot(e.getNum_persone());
+			Tavolo trovato = null;
+			// cerca un tavolo
+			for(Tavolo t : this.tavoli) {
+				if(!t.isOccupato() && t.getnPosti()>=e.getNum_persone() && t.getnPosti()*this.OCCUPAZIONE_MIN<=e.getNum_persone()){
+					trovato = t;
+					break;
+				}
+			}
+			
+			if(trovato != null) {
+				System.out.format("Sedute %d persone a tavolo da %d posti", e.getNum_persone(), trovato.getnPosti());
+				stat.addNumClientiSoddisfatti(e.getNum_persone());
+				trovato.setOccupato(true);
+				// un nuovo evento sarà generato perchè il gruppo libererà il tavolo
+				Event ev = new Event(e.getTime().plus(e.getDurata()), EventType.TAVOLO_LIBERATO, e.getNum_persone(), e.getDurata(), e.getTolleranza(), trovato);
+				this.queue.add(ev);
 			} else {
-				this.clienti += e.getNum_persone();
-				this.insoddisfatti += e.getNum_persone();
+				double bancone = Math.random(); // [0, 1)
+				if(bancone <= e.getTolleranza()) {
+					// Si, le persone accettano di andare al bancone
+					stat.addNumClientiSoddisfatti(e.getNum_persone());
+				} else {
+					// Le persone se ne vanno
+					stat.addNumClientiInsoddisfatti(e.getNum_persone());
+				}
 			}
 			break;
 			
 		case TAVOLO_LIBERATO:
-			for (int chiave : this.tavoli_disp.keySet()) {
-				if(chiave == e.getNum_persone()) {
-						this.tavoli_disp.put(chiave, this.tavoli_disp.get(chiave)+1);
-					}
-				}
+			e.getTavolo().setOccupato(false);
+			// quindi il tavolo può ospitare altri clienti
 			break;
 		}
 	}
 	
-	public int getClienti() {
-		return this.clienti;
+	public Statistiche getStat() {
+		return this.stat;
 	}
-	
-	public int getSoddisfatti() {
-		return this.soddisfatti;
-	}
-	
-	public int getInsoddisfatti() {
-		return this.insoddisfatti;
-	}
-	
 	
 	
 	

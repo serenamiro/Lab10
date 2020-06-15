@@ -1,32 +1,35 @@
 package it.polito.tdp.bar.model;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 public class Event implements Comparable<Event>{
 	
 	public enum EventType{
-		ARRIVO_GRUPPO_CLIENTI, TAVOLO_LIBERATO
+		ARRIVO_GRUPPO_CLIENTI, // arriva un gruppo, verrà sistemato al tavolo oppure al bancone se accettano il bancone
+		TAVOLO_LIBERATO // un gruppo precedentemente posto in un tavolo esce e libera il tavolo stesso
 	}
 
-	private LocalDateTime time;
+	private Duration time; // orario di arrivo rispetto all'inizio della simulazione
 	private EventType type;
 	private int num_persone;
-	private double toll_random;
+	private Duration durata;
+	private double tolleranza; // quanto il gruppo è tollerante ad accettare il bancone o no
+	private Tavolo tavolo;
 	
-	public Event(LocalDateTime time, EventType type, int num_persone, double toll_random) {
+	public Event(Duration time, EventType type, int num_persone, Duration durata, double tolleranza, Tavolo tavolo) {
 		this.time = time;
 		this.type = type;
 		this.num_persone = num_persone;
-		this.toll_random = toll_random;
+		this.durata = durata;
+		this.tolleranza = tolleranza;
+		this.tavolo = tavolo;
 	}
 
-	public LocalDateTime getTime() {
+	public Duration getTime() {
 		return time;
 	}
 
-	public void setTime(LocalDateTime time) {
+	public void setTime(Duration time) {
 		this.time = time;
 	}
 
@@ -46,63 +49,42 @@ public class Event implements Comparable<Event>{
 		this.num_persone = num_persone;
 	}
 
+	public Duration getDurata() {
+		return durata;
+	}
+
+	public void setDurata(Duration durata) {
+		this.durata = durata;
+	}
+
+	public double getTolleranza() {
+		return tolleranza;
+	}
+
+	public void setTolleranza(double tolleranza) {
+		this.tolleranza = tolleranza;
+	}
+
+	public Tavolo getTavolo() {
+		return tavolo;
+	}
+
+	public void setTavolo(Tavolo tavolo) {
+		this.tavolo = tavolo;
+	}
+
 	@Override
-	public String toString() {
-		return "Event [time=" + time + ", type=" + type + ", num_persone=" + num_persone + ", toll_random="
-				+ toll_random + "]";
-	}
-
-	public double getToll_random() {
-		return toll_random;
-	}
-
-	public void setToll_random(double toll_random) {
-		this.toll_random = toll_random;
-	}
-
-	@Override
-	public int compareTo(Event other) {
-		// delega al comparatore di time
-		return this.time.compareTo(other.time);
-	}
-
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + num_persone;
-		result = prime * result + ((time == null) ? 0 : time.hashCode());
-		long temp;
-		temp = Double.doubleToLongBits(toll_random);
-		result = prime * result + (int) (temp ^ (temp >>> 32));
-		result = prime * result + ((type == null) ? 0 : type.hashCode());
-		return result;
+	public int compareTo(Event o) {
+		return this.time.compareTo(o.time);
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Event other = (Event) obj;
-		if (num_persone != other.num_persone)
-			return false;
-		if (time == null) {
-			if (other.time != null)
-				return false;
-		} else if (!time.equals(other.time))
-			return false;
-		if (Double.doubleToLongBits(toll_random) != Double.doubleToLongBits(other.toll_random))
-			return false;
-		if (type != other.type)
-			return false;
-		return true;
+	public String toString() {
+		return "Event [time=" + time + ", type=" + type + ", num_persone=" + num_persone + ", durata=" + durata
+				+ ", tolleranza=" + tolleranza + ", tavolo=" + tavolo + "]";
 	}
-
 	
 	
+
 	
 }
